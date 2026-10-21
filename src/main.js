@@ -103,6 +103,7 @@ function normalizeTransaction(transaction, hash) {
     roundValidators: lastRound.roundValidators ?? lastRound.round_validators,
     validatorVotesHash: lastRound.validatorVotesHash ?? lastRound.validator_votes_hash,
     validatorVotes: lastRound.validatorVotes ?? lastRound.validator_votes,
+    validatorVotesName: lastRound.validatorVotesName ?? lastRound.validator_votes_name,
   };
   return {
     id: transaction.hash || transaction.txId || transaction.tx_id || hash,
@@ -147,7 +148,7 @@ function renderReport(report) {
   $("#tx-contract").textContent = `contract ${shortAddress(receipt.recipient)}`;
   renderDiagnosis(receipt, lifecycle, trace);
   renderRounds(receipt.roundData || []);
-  renderValidatorExecutions(receipt.validators || []);
+  renderValidatorExecutions(receipt);
   renderTrace(trace, report.optional_errors.trace);
   renderTimeline(receipt.timestamps || {});
   $("#raw-output").textContent = JSON.stringify({ receipt, lifecycle, trace, optional_errors: report.optional_errors }, null, 2);
@@ -239,29 +240,46 @@ function renderRounds(rounds) {
   });
 }
 
-function renderValidatorExecutions(validators) {
+function renderValidatorExecutions(receipt) {
   const list = $("#validator-executions");
-  $("#validator-count").textContent = `${validators.length} validator${validators.length === 1 ? "" : "s"}`;
+  const validators = receipt.validators || [];
+  const validatorByAddress = new Map(validators.map((validator) => [
+    String(validator.node_config?.address || validator.address || "").toLowerCase(),
+    validator,
+  ]));
+  const records = (receipt.roundData || []).flatMap((round) => (round.roundValidators || []).map((address, index) => ({
+    address,
+    vote: round.validatorVotesName?.[index] || (Array.isArray(round.validatorVotes) ? round.validatorVotes[index] : null),
+    round: Number(round.round || 0),
+    execution: validatorByAddress.get(String(address).toLowerCase()),
+  })));
+  const rows = records.length ? records : validators.map((execution) => ({
+    address: execution.node_config?.address || execution.address,
+    vote: execution.vote,
+    execution,
+  }));
+  const reported = rows.filter((row) => row.execution).length;
+  $("#validator-count").textContent = `${rows.length} records · ${reported} with execution`;
   list.replaceChildren();
-  if (!validators.length) {
+  if (!rows.length) {
     list.innerHTML = '<p class="empty">no per-validator execution data in this receipt.</p>';
     return;
   }
 
-  validators.forEach((validator, index) => {
+  rows.forEach((row, index) => {
     const card = document.createElement("article");
     card.className = "validator-execution";
     const heading = document.createElement("div");
     heading.className = "validator-execution-head";
     const address = document.createElement("strong");
-    address.textContent = shortAddress(validator.node_config?.address || validator.address || "");
+    address.textContent = `${shortAddress(row.address || "")} · round ${row.round + 1 || 1}`;
     const badges = document.createElement("div");
     badges.className = "validator-badges";
-    badges.append(executionBadge("vote", validator.vote), executionBadge("execution", validator.execution_result || validator.genvm_result?.execution_result || "not reported"));
+    badges.append(executionBadge("vote", row.vote || row.execution?.vote || "not reported"), executionBadge("execution", row.execution?.execution_result || row.execution?.genvm_result?.execution_result || "not in receipt"));
     heading.append(address, badges);
     card.append(heading);
 
-    const result = validator.genvm_result || {};
+    const result = row.execution?.genvm_result || {};
     const logs = { stdout: result.stdout || "", stderr: result.stderr || "", error: result.raw_error || result.error_description || null };
     if (logs.stdout || logs.stderr || logs.error) {
       const details = document.createElement("details");
