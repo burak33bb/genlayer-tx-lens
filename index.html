@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f3f1eb" />
+    <meta name="description" content="Inspect GenLayer transaction consensus, lifecycle, validator rounds, and GenVM traces." />
+    <title>tx lens · genlayer</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="#top"><span class="mark">tx</span><span><b>tx lens</b><small>genlayer transaction inspector</small></span></a>
+        <span class="network-pill">read only · studionet 61999</span>
+      </header>
+
+      <section id="top" class="intro">
+        <div><span class="eyebrow">for builders · consensus, lifecycle, execution trace</span><h1>find where a GenLayer transaction got stuck.</h1><p>Paste a transaction hash to inspect the receipt, validator rounds, lifecycle, and GenVM trace in one place.</p></div>
+        <div class="protocol-mark"><span>gen</span><strong>layer</strong><small>network tools</small></div>
+      </section>
+
+      <section class="search-panel">
+        <form id="inspect-form">
+          <label for="tx-hash">transaction hash</label>
+          <div class="search-row"><input id="tx-hash" spellcheck="false" placeholder="0x…" required /><button id="inspect-button" class="button dark" type="submit">inspect transaction</button></div>
+        </form>
+        <details class="rpc-settings"><summary>rpc endpoint</summary><div><input id="rpc-url" type="url" value="https://studio.genlayer.com/api" spellcheck="false"/><button id="save-rpc" class="button light" type="button">save endpoint</button></div></details>
+      </section>
+
+      <div id="notice" class="notice" hidden></div>
+      <section id="report" class="report" hidden>
+        <div class="report-head">
+          <div><span class="eyebrow">transaction report</span><h2 id="report-title">transaction</h2></div>
+          <div class="report-actions"><button id="copy-report" class="button light" type="button">copy report</button><button id="download-report" class="button light" type="button">download json</button></div>
+        </div>
+
+        <div class="summary-grid">
+          <article><span>stored status</span><strong id="stored-status">—</strong><small id="projected-status">projected: —</small></article>
+          <article><span>execution result</span><strong id="execution-result">—</strong><small id="execution-hint">—</small></article>
+          <article><span>resolution action</span><strong id="resolution-action">—</strong><small id="resolution-source">—</small></article>
+        </div>
+
+        <section class="diagnostic panel">
+          <div class="panel-heading"><div><span class="eyebrow">next place to look</span><h3 id="diagnosis-title">inspection in progress</h3></div><span id="diagnosis-kind" class="kind">read only</span></div>
+          <p id="diagnosis-body">Loading receipt and execution details.</p>
+        </section>
+
+        <div class="detail-grid">
+          <section class="panel rounds-panel">
+            <div class="panel-heading"><div><span class="eyebrow">consensus</span><h3>validator rounds</h3></div><span id="round-count" class="count">0 rounds</span></div>
+            <div id="rounds-list" class="rounds-list"><p class="empty">no round data available.</p></div>
+          </section>
+          <section class="panel trace-panel">
+            <div class="panel-heading"><div><span class="eyebrow">genvm</span><h3>execution trace</h3></div><span id="trace-state" class="count">waiting</span></div>
+            <div id="trace-summary" class="trace-summary">Trace output will appear here if the node exposes the debug endpoint.</div>
+            <details class="trace-details"><summary>stdout · stderr · logs</summary><pre id="trace-output">{} </pre></details>
+          </section>
+        </div>
+
+        <section class="panel timeline-panel">
+          <div class="panel-heading"><div><span class="eyebrow">protocol</span><h3>transaction timeline</h3></div><span id="tx-contract" class="contract-chip">contract —</span></div>
+          <div id="timeline" class="timeline"></div>
+        </section>
+
+        <details class="raw-panel"><summary>raw rpc responses</summary><pre id="raw-output">{}</pre></details>
+      </section>
+
+      <section class="recent-section">
+        <div class="panel-heading"><div><span class="eyebrow">this browser</span><h3>recent inspections</h3></div><button id="clear-history" class="button light" type="button">clear</button></div>
+        <div id="history" class="history-list"><span class="empty">no recent hashes.</span></div>
+      </section>
+
+      <footer class="footer"><span>public read-only data · no wallet connection needed</span><div><a href="https://docs.genlayer.com/api-references/genlayer-node/gen/gen_getTransactionReceipt" target="_blank" rel="noreferrer">receipt api</a><a href="https://docs.genlayer.com/api-references/genlayer-node/debug/gen_dbg_traceTransaction" target="_blank" rel="noreferrer">trace api</a><a href="https://explorer-studio.genlayer.com" target="_blank" rel="noreferrer">explorer</a></div></footer>
+    </main>
+    <div id="toast" class="toast" role="status"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "genlayer-tx-lens",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "check": "node --check src/main.js"
+  },
+  "dependencies": {
+    "genlayer-js": "1.1.8",
+    "vite": "7.3.6"
+  }
+}
