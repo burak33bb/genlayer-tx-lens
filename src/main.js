@@ -1,4 +1,5 @@
 import "./styles.css";
+import "./validator.css";
 import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 
@@ -112,6 +113,7 @@ function normalizeTransaction(transaction, hash) {
     consensusResult: transaction.resultName || transaction.result_name,
     numOfInitialValidators: transaction.numOfInitialValidators ?? transaction.num_of_initial_validators,
     roundData: normalizedRound ? [normalizedRound] : [],
+    validators: transaction.consensus_data?.validators || transaction.validators || [],
     timestamps: { Created: createdAt, LastVote: lastVote },
     sdk_transaction: transaction,
   };
@@ -145,6 +147,7 @@ function renderReport(report) {
   $("#tx-contract").textContent = `contract ${shortAddress(receipt.recipient)}`;
   renderDiagnosis(receipt, lifecycle, trace);
   renderRounds(receipt.roundData || []);
+  renderValidatorExecutions(receipt.validators || []);
   renderTrace(trace, report.optional_errors.trace);
   renderTimeline(receipt.timestamps || {});
   $("#raw-output").textContent = JSON.stringify({ receipt, lifecycle, trace, optional_errors: report.optional_errors }, null, 2);
@@ -158,7 +161,7 @@ function renderDiagnosis(receipt, lifecycle, trace) {
 
   if (receipt.consensusResult === "MAJORITY_AGREE" && String(receipt.statusName).toUpperCase() === "FINALIZED") {
     title = "validators reached majority agreement";
-    body = "The transaction is finalized on Studionet. Detailed GenVM trace is unavailable from the configured RPC endpoint.";
+    body = "The transaction is finalized on Studionet. Per-validator execution results are shown below; the full GenVM trace is unavailable from this RPC endpoint.";
     kind = "finalized";
   } else if (execution === "FinishedWithError" || trace?.result_code === 1) {
     title = "the contract returned an error";
@@ -234,6 +237,50 @@ function renderRounds(rounds) {
     card.append(heading, facts, validators, encoded);
     list.append(card);
   });
+}
+
+function renderValidatorExecutions(validators) {
+  const list = $("#validator-executions");
+  $("#validator-count").textContent = `${validators.length} validator${validators.length === 1 ? "" : "s"}`;
+  list.replaceChildren();
+  if (!validators.length) {
+    list.innerHTML = '<p class="empty">no per-validator execution data in this receipt.</p>';
+    return;
+  }
+
+  validators.forEach((validator, index) => {
+    const card = document.createElement("article");
+    card.className = "validator-execution";
+    const heading = document.createElement("div");
+    heading.className = "validator-execution-head";
+    const address = document.createElement("strong");
+    address.textContent = shortAddress(validator.node_config?.address || validator.address || "");
+    const badges = document.createElement("div");
+    badges.className = "validator-badges";
+    badges.append(executionBadge("vote", validator.vote), executionBadge("execution", validator.execution_result || validator.genvm_result?.execution_result || "not reported"));
+    heading.append(address, badges);
+    card.append(heading);
+
+    const result = validator.genvm_result || {};
+    const logs = { stdout: result.stdout || "", stderr: result.stderr || "", error: result.raw_error || result.error_description || null };
+    if (logs.stdout || logs.stderr || logs.error) {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = `validator ${index + 1} output`;
+      const pre = document.createElement("pre");
+      pre.textContent = JSON.stringify(logs, null, 2);
+      details.append(summary, pre);
+      card.append(details);
+    }
+    list.append(card);
+  });
+}
+
+function executionBadge(label, value) {
+  const badge = document.createElement("span");
+  badge.className = "validator-badge";
+  badge.textContent = `${label}: ${lower(value)}`;
+  return badge;
 }
 
 function renderTrace(trace, error) {
