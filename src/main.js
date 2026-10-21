@@ -89,17 +89,28 @@ async function inspect(event) {
 }
 
 function normalizeTransaction(transaction, hash) {
-  const createdAt = Number(transaction.createdTimestamp || 0);
-  const lastVote = Number(transaction.lastVoteTimestamp || 0);
-  const lastRound = transaction.lastRound;
+  const createdAt = Number(transaction.createdTimestamp || transaction.created_timestamp || 0);
+  const lastVote = Number(transaction.lastVoteTimestamp || transaction.last_vote_timestamp || 0);
+  const lastRound = transaction.lastRound || transaction.last_round;
+  const normalizedRound = lastRound && {
+    ...lastRound,
+    round: Number(lastRound.round || 0),
+    votesCommitted: lastRound.votesCommitted ?? lastRound.votes_committed,
+    votesRevealed: lastRound.votesRevealed ?? lastRound.votes_revealed,
+    leaderIndex: lastRound.leaderIndex ?? lastRound.leader_index,
+    rotationsLeft: lastRound.rotationsLeft ?? lastRound.rotations_left,
+    roundValidators: lastRound.roundValidators ?? lastRound.round_validators,
+    validatorVotesHash: lastRound.validatorVotesHash ?? lastRound.validator_votes_hash,
+    validatorVotes: lastRound.validatorVotes ?? lastRound.validator_votes,
+  };
   return {
-    id: transaction.hash || transaction.txId || hash,
+    id: transaction.hash || transaction.txId || transaction.tx_id || hash,
     sender: transaction.sender || transaction.from_address,
-    recipient: transaction.recipient || transaction.to_address,
+    recipient: transaction.recipient || transaction.to_address || transaction.to,
     statusName: transaction.statusName || transaction.status,
-    txExecutionResultName: transaction.txExecutionResultName,
-    numOfInitialValidators: transaction.numOfInitialValidators,
-    roundData: lastRound ? [{ ...lastRound, round: Number(lastRound.round || 0) }] : [],
+    txExecutionResultName: transaction.txExecutionResultName || transaction.execution_result,
+    numOfInitialValidators: transaction.numOfInitialValidators ?? transaction.num_of_initial_validators,
+    roundData: normalizedRound ? [normalizedRound] : [],
     timestamps: { Created: createdAt, LastVote: lastVote },
     sdk_transaction: transaction,
   };
@@ -164,7 +175,7 @@ function renderDiagnosis(receipt, lifecycle, trace) {
     title = "the GenVM trace reports a runtime error";
     body = "Read stderr and the final GenVM log entry for the concrete exception. The result code alone does not identify the source line.";
     kind = "vm error";
-  } else if (receipt.statusName === "Finalized" && receipt.txExecutionResultName === "FinishedWithReturn") {
+  } else if (["SUCCESS", "FinishedWithReturn"].includes(execution) && String(receipt.statusName).toUpperCase() === "FINALIZED") {
     title = "execution returned successfully";
     body = "Finalized with a return does not by itself prove your app stored the expected report. Read the contract's finalized state and compare it with return_data.";
     kind = "returned";
