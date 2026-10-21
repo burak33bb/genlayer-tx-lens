@@ -109,6 +109,7 @@ function normalizeTransaction(transaction, hash) {
     recipient: transaction.recipient || transaction.to_address || transaction.to,
     statusName: transaction.statusName || transaction.status,
     txExecutionResultName: transaction.txExecutionResultName || transaction.execution_result,
+    consensusResult: transaction.resultName || transaction.result_name,
     numOfInitialValidators: transaction.numOfInitialValidators ?? transaction.num_of_initial_validators,
     roundData: normalizedRound ? [normalizedRound] : [],
     timestamps: { Created: createdAt, LastVote: lastVote },
@@ -137,7 +138,7 @@ function renderReport(report) {
   $("#report-title").textContent = `${shortHash(receipt.id || receipt.txId || "transaction")}`;
   $("#stored-status").textContent = lower(lifecycle?.storedStatus || receipt.statusName || "unknown");
   $("#projected-status").textContent = `projected: ${lower(lifecycle?.projectedStatus || "not available")}`;
-  $("#execution-result").textContent = lower(receipt.txExecutionResultName || resultName(trace?.result_code));
+  $("#execution-result").textContent = lower(receipt.consensusResult || receipt.txExecutionResultName || resultName(trace?.result_code));
   $("#execution-hint").textContent = `${receipt.numOfInitialValidators ?? "?"} initial validators · ${receipt.roundData?.length || 0} round(s)`;
   $("#resolution-action").textContent = lower(lifecycle?.resolutionAction || "not available");
   $("#resolution-source").textContent = lower(lifecycle?.resolutionSource || "lifecycle endpoint unavailable");
@@ -155,7 +156,11 @@ function renderDiagnosis(receipt, lifecycle, trace) {
   let body = "The receipt was found. Read the return data and finalized contract state to confirm the application stored the expected value.";
   let kind = "check result";
 
-  if (execution === "FinishedWithError" || trace?.result_code === 1) {
+  if (receipt.consensusResult === "MAJORITY_AGREE" && String(receipt.statusName).toUpperCase() === "FINALIZED") {
+    title = "validators reached majority agreement";
+    body = "The transaction is finalized on Studionet. Detailed GenVM trace is unavailable from the configured RPC endpoint.";
+    kind = "finalized";
+  } else if (execution === "FinishedWithError" || trace?.result_code === 1) {
     title = "the contract returned an error";
     body = "Open the GenVM trace and read stderr and the last error log. This usually contains the contract's validation message or the failing operation.";
     kind = "contract error";
