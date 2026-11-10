@@ -27,6 +27,22 @@
         <details class="rpc-settings"><summary>rpc endpoint</summary><div><input id="rpc-url" type="url" value="https://studio.genlayer.com/api" spellcheck="false"/><button id="save-rpc" class="button light" type="button">save endpoint</button></div></details>
       </section>
 
+      <section class="compare-panel">
+        <details id="compare-details">
+          <summary>compare transactions <span>inspect 2–5 receipts side by side</span></summary>
+          <form id="compare-form">
+            <label for="compare-hashes">paste one transaction hash per line</label>
+            <textarea id="compare-hashes" rows="4" placeholder="0x…&#10;0x…"></textarea>
+            <div class="compare-controls"><small>Receipt fields and validator vote summaries are compared. No wallet connection is needed.</small><button id="compare-button" class="button dark" type="submit">compare receipts</button></div>
+          </form>
+        </details>
+        <section id="compare-result" class="compare-result" hidden>
+          <div class="panel-heading"><div><span class="eyebrow">receipt comparison</span><h3 id="compare-title">transaction results</h3></div><div class="report-actions"><button id="copy-comparison" class="button light" type="button">copy json</button><button id="download-comparison" class="button light" type="button">download json</button></div></div>
+          <p id="compare-summary" class="compare-summary"></p>
+          <div id="compare-cards" class="compare-cards"></div>
+        </section>
+      </section>
+
       <div id="notice" class="notice" hidden></div>
       <section id="report" class="report" hidden>
         <div class="report-head">

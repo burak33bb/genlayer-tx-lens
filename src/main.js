@@ -1,5 +1,6 @@
 import "./styles.css";
 import "./validator.css";
+import "./compare.css";
 import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 
@@ -8,6 +9,7 @@ const HISTORY_KEY = "tx-lens-history";
 const DEFAULT_RPC = "https://studio.genlayer.com/api";
 const $ = (selector) => document.querySelector(selector);
 let latestReport = null;
+let latestComparison = null;
 let requestId = 0;
 let inspectionId = 0;
 let toastTimer;
@@ -18,6 +20,9 @@ $("#save-rpc").addEventListener("click", saveRpc);
 $("#copy-report").addEventListener("click", copyReport);
 $("#download-report").addEventListener("click", downloadReport);
 $("#clear-history").addEventListener("click", clearHistory);
+$("#compare-form").addEventListener("submit", compareTransactions);
+$("#copy-comparison").addEventListener("click", copyComparison);
+$("#download-comparison").addEventListener("click", downloadComparison);
 renderHistory();
 
 function saveRpc() {
@@ -87,6 +92,128 @@ async function inspect(event) {
   renderReport(latestReport);
   const missing = [latestReport.optional_errors.lifecycle && "lifecycle", latestReport.optional_errors.trace && "trace"].filter(Boolean);
   showNotice(missing.length ? `receipt loaded. unavailable: ${missing.join(" and ")}.` : "inspection complete.");
+}
+
+async function compareTransactions(event) {
+  event.preventDefault();
+  const hashes = [...new Set($("#compare-hashes").value.split(/[\s,]+/).map((value) => value.trim()).filter(Boolean))];
+  if (hashes.length < 2 || hashes.length > 5) return showNotice("enter between two and five unique transaction hashes.", true);
+  if (hashes.some((hash) => !/^0x[a-fA-F0-9]{64}$/.test(hash))) return showNotice("each hash must start with 0x and contain 64 hexadecimal characters.", true);
+  const endpoint = $("#rpc-url").value.trim();
+  try {
+    if (new URL(endpoint).protocol !== "https:") throw new Error("rpc endpoint must use https.");
+  } catch { return showNotice("enter a valid https rpc endpoint.", true); }
+
+  const button = $("#compare-button");
+  button.disabled = true;
+  button.textContent = "loading receipts…";
+  $("#compare-result").hidden = true;
+  showNotice(`loading ${hashes.length} transaction receipts…`);
+  const client = createClient({ chain: studionet, endpoint });
+  const results = await Promise.all(hashes.map(async (hash) => {
+    try {
+      const transaction = await client.getTransaction({ hash });
+      if (!transaction) throw new Error("transaction not found on this network.");
+      return { hash, receipt: normalizeTransaction(transaction, hash), error: null };
+    } catch (error) {
+      return { hash, receipt: null, error: readable(error) };
+    }
+  }));
+  latestComparison = {
+    network: "GenLayer Studionet 61999",
+    rpc_endpoint: endpoint,
+    compared_at: new Date().toISOString(),
+    comparison_scope: "transaction receipts and included validator vote summaries; no debug traces requested",
+    results,
+    differences: comparisonDifferences(results),
+  };
+  renderComparison(latestComparison);
+  button.disabled = false;
+  button.textContent = "compare receipts";
+  const failed = results.filter((result) => result.error).length;
+  showNotice(failed ? `comparison loaded with ${failed} receipt request failure(s).` : "receipt comparison complete.");
+}
+
+function comparisonDifferences(results) {
+  const successful = results.filter((result) => result.receipt);
+  const fields = [
+    ["stored_status", (receipt) => receipt.statusName || "unknown"],
+    ["consensus_result", (receipt) => receipt.consensusResult || receipt.txExecutionResultName || "unknown"],
+    ["contract_address", (receipt) => String(receipt.recipient || "unknown").toLowerCase()],
+    ["round_count", (receipt) => String(receipt.roundData?.length || 0)],
+    ["validator_vote_summary", (receipt) => voteSummary(receipt)],
+  ];
+  return Object.fromEntries(fields.map(([name, getValue]) => {
+    const values = successful.map(({ receipt }) => getValue(receipt));
+    return [name, { differs: new Set(values).size > 1, values }];
+  }));
+}
+
+function renderComparison(comparison) {
+  const { results, differences } = comparison;
+  const good = results.filter((result) => result.receipt).length;
+  const different = Object.values(differences).filter((field) => field.differs).length;
+  $("#compare-result").hidden = false;
+  $("#compare-title").textContent = `${good}/${results.length} receipts loaded`;
+  $("#compare-summary").textContent = good < 2
+    ? "At least two receipts must load to compare their results. Check the failed hash or selected network."
+    : different
+      ? `${different} compared field(s) differ. Review the cards below to see where the transactions diverge.`
+      : "The compared receipt fields match. Validator vote summaries are shown per transaction when the receipt includes them.";
+  const cards = $("#compare-cards");
+  cards.replaceChildren();
+  results.forEach((result, index) => {
+    const card = document.createElement("article");
+    card.className = "compare-card";
+    const heading = document.createElement("div");
+    heading.className = "compare-card-head";
+    const title = document.createElement("strong");
+    title.textContent = `transaction ${index + 1}`;
+    const badge = document.createElement("span");
+    badge.className = result.error ? "compare-badge failed" : "compare-badge";
+    badge.textContent = result.error ? "receipt unavailable" : "receipt loaded";
+    heading.append(title, badge);
+    const hash = document.createElement("code");
+    hash.textContent = result.hash;
+    card.append(heading, hash);
+    if (result.error) {
+      const error = document.createElement("p");
+      error.className = "compare-error";
+      error.textContent = result.error;
+      card.append(error);
+    } else {
+      const { receipt } = result;
+      const votes = voteSummary(receipt);
+      const rows = [
+        ["stored status", receipt.statusName || "not reported"],
+        ["consensus result", receipt.consensusResult || receipt.txExecutionResultName || "not reported"],
+        ["contract", receipt.recipient || "not reported"],
+        ["validator rounds", String(receipt.roundData?.length || 0)],
+        ["reported votes", votes],
+      ];
+      const list = document.createElement("dl");
+      list.className = "compare-facts";
+      rows.forEach(([label, value]) => {
+        const row = document.createElement("div");
+        const term = document.createElement("dt");
+        const detail = document.createElement("dd");
+        term.textContent = label;
+        detail.textContent = value;
+        row.append(term, detail);
+        list.append(row);
+      });
+      card.append(list);
+    }
+    cards.append(card);
+  });
+}
+
+function voteSummary(receipt) {
+  const votes = (receipt.roundData || []).flatMap((round) => round.validatorVotesName || []);
+  if (!votes.length) return "not included in receipt";
+  const counts = new Map();
+  votes.forEach((vote) => counts.set(String(vote), (counts.get(String(vote)) || 0) + 1));
+  return [...counts.entries()].map(([vote, count]) => `${vote}: ${count}`).join(" · ");
 }
 
 function normalizeTransaction(transaction, hash) {
@@ -374,12 +501,22 @@ function renderHistory() {
 
 function clearHistory() { localStorage.removeItem(HISTORY_KEY); renderHistory(); }
 async function copyReport() { if (!latestReport) return; await navigator.clipboard.writeText(JSON.stringify(latestReport, null, 2)); notify("report copied."); }
+async function copyComparison() { if (!latestComparison) return; await navigator.clipboard.writeText(JSON.stringify(latestComparison, null, 2)); notify("comparison copied."); }
 function downloadReport() {
   if (!latestReport) return;
   const blob = new Blob([JSON.stringify(latestReport, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = `genlayer-tx-${shortHash(latestReport.receipt.id || "report").replaceAll("…", "-")}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+function downloadComparison() {
+  if (!latestComparison) return;
+  const blob = new Blob([JSON.stringify(latestComparison, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "genlayer-tx-comparison.json";
   link.click();
   URL.revokeObjectURL(link.href);
 }

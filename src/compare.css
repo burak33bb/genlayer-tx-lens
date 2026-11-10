@@ -1,0 +1,24 @@
+.compare-panel{margin-top:11px;padding:12px 15px;border:1px solid var(--line);border-radius:8px;background:rgba(255,254,250,.58)}
+.compare-panel>details>summary{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:11px;font-weight:700;cursor:pointer;list-style-position:inside}
+.compare-panel>details>summary span{color:var(--muted);font-size:9px;font-weight:400}
+.compare-panel form{display:grid;gap:7px;margin-top:12px}
+.compare-panel label{color:#5e5c54;font-size:10px;font-weight:700}
+.compare-panel textarea{width:100%;resize:vertical;padding:10px 12px;border:1px solid #dcd7cc;border-radius:6px;outline:none;background:#fffefa;color:var(--ink);font:10px/1.6 ui-monospace,monospace}
+.compare-panel textarea:focus{border-color:#b77556;box-shadow:0 0 0 3px rgba(184,93,55,.1)}
+.compare-controls{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.compare-controls small{color:var(--muted);font-size:9px;line-height:1.4}
+.compare-result{margin-top:15px;padding-top:14px;border-top:1px solid var(--line)}
+.compare-summary{margin-bottom:10px;padding:9px 10px;border-radius:6px;background:#f1eee6;color:#55534d;font-size:10px;line-height:1.5}
+.compare-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.compare-card{min-width:0;padding:10px;border:1px solid var(--line);border-radius:7px;background:#fffefa}
+.compare-card-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
+.compare-card-head strong{font-size:10px}
+.compare-badge{padding:4px 6px;border-radius:12px;background:#e8efe5;color:#436647;font-size:8px;white-space:nowrap}
+.compare-badge.failed{background:#f5e8e1;color:#883f2c}
+.compare-card>code{display:block;overflow-wrap:anywhere;color:var(--muted);font:8px/1.5 ui-monospace,monospace}
+.compare-facts{display:grid;gap:0;margin:8px 0 0}
+.compare-facts>div{display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px;padding:6px 0;border-top:1px solid #efede6}
+.compare-facts dt{color:var(--muted);font-size:8px}
+.compare-facts dd{margin:0;font-size:9px;overflow-wrap:anywhere}
+.compare-error{margin-top:8px;color:var(--red);font-size:9px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:500px){.compare-controls{align-items:stretch;flex-direction:column}.compare-controls .button{width:100%}.compare-panel>details>summary{align-items:flex-start;flex-direction:column;gap:4px}.compare-cards{grid-template-columns:1fr}}

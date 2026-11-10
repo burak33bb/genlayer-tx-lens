@@ -9,8 +9,11 @@ GenLayer Tx Lens is a read-only transaction inspector for Studionet. It uses the
 - GenVM result, stdout, stderr, logs, return data, and equivalence outputs when a debug trace is available
 - A short diagnostic hint for common execution and consensus outcomes
 - Copyable or downloadable JSON reports and recent hashes stored only in the current browser
+- Side-by-side comparison of two to five transaction receipts, including status, consensus result, contract address, round count, and validator vote summaries
 
 The tool does not connect a wallet, submit transactions, or write to a contract. The transaction receipt is shown before optional lifecycle and trace requests finish. Debug traces are optional because the RPC endpoint must enable GenLayer's debug API group. Diagnostic hints are guidance, not a verified root-cause analysis.
+
+Receipt comparison fetches only the requested transaction receipts. It reports which included fields differ and does not infer why validators disagreed. Missing receipt fields are shown as unavailable; vote summaries are only displayed when the receipt includes named validator votes. Comparison reports can be copied or downloaded as JSON.
 
 ## Run locally
 
